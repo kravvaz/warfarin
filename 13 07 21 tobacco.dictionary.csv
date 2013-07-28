@@ -1,0 +1,11 @@
+TOBACCO_USE,VALUE,VALUE_Digit
+Current,current,2
+Current Smoker,current,2
+Former < or = to 12 months ago,not_current,3
+Former < or = to 12 months ago2,not_current,3
+Former > 12 months ago,not_current,3
+Former Smoker < or = to 12 months ago,not_current,3
+Former Smoker >12 months ago,not_current,3
+Never,never,5
+Never Smoker,never,5
+Unknown if Ever Smoked,unknown,7

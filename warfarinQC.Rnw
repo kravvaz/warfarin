@@ -1,0 +1,1177 @@
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{times}
+
+\textwidth=6.2in
+\textheight=8.5in
+%\parskip=.3cm
+\oddsidemargin=.1in
+\evensidemargin=.1in
+\headheight=-0.3in
+
+%------------------------------------------------------------
+% newcommand
+%------------------------------------------------------------
+\newcommand{\scscst}{\scriptscriptstyle}
+\newcommand{\scst}{\scriptstyle}
+\newcommand{\Robject}[1]{{\texttt{#1}}}
+\newcommand{\Rfunction}[1]{{\texttt{#1}}}
+\newcommand{\Rclass}[1]{\textit{#1}}
+\newcommand{\Rpackage}[1]{\textit{#1}}
+\newcommand{\Rexpression}[1]{\texttt{#1}}
+\newcommand{\Rmethod}[1]{{\texttt{#1}}}
+\newcommand{\Rfunarg}[1]{{\texttt{#1}}}
+
+\begin{document}
+\SweaveOpts{concordance=TRUE, keep.source=FALSE}
+
+%------------------------------------------------------------
+\title{Aurora Anticoagulation and Anticlotting's EMRs: 
+Extraction, Transformation and Loading}
+%------------------------------------------------------------
+\author{Kourosh Ravvaz}
+%\date{}
+
+\SweaveOpts{highlight=TRUE, tidy=TRUE, keep.space=TRUE, keep.blank.space=FALSE, keep.comment=TRUE}
+\SweaveOpts{prefix.string=Fig}
+
+\maketitle
+\tableofcontents
+
+%-------------------------------------------
+\section{Introduction}
+%--------------------------------------------
+The goal of this effort is to extract warfarin treated patients from the Aurora Health Care (AHC) patient database which will be used to create a statistical characterization and use a portion of the patient data to train a Bayesian Network Model to produce accurate Aurora patient population clinical avatar populations. The clinical avatars are used to produce pharmacogenomic simulations to test the predicted accuracy and efficacy outcomes against Aurora Health Care outcome data.
+
+%-------------------------------------------
+\section{The Process of Extraction, Transformation, Loading}
+%--------------------------------------------
+The Aurora Health Care (AHC) project team mined all project data from the Aurora Health Care hospitals and clinics data warehouse for the period of 2002 to 2011. The patient data was de-identified by the AHC project team before distribution to the UWM team.  The UWM team extracted, transformed, and then loaded the de-identified subject records into a working database. The cohort includes patients with evidence of prescription of any of the following medications: Coumadin (Warfarin), Heparin, Ticlopidine (Ticlid), Clopidogrel (Plavix), Dipyridamole (Persantine), Abciximab (ReoPro), Eptifibatide (Integrilin), Tirofiban (Aggrastat), or Dabigatran (Pradaxa).  This effort resulted in a total of 157,450 de-identified data records.  Each data record includes (as available): gender, race, height, weight, age, day of visit, patient\'s zipcode, patient\'s city, provider\'s zipcode, smoking status, INR result, medications received (day, dose, frequency), interacting medications (Amiodarone, Simvastatin, Fluvastatin, Lovastatin, Atrovastatin, Rosuvastatin, Pravastatin, Aspirin), medication indications (by ICD-9 codes: Orthopedic surgery (hip or knee), Deep vein thrombosis, Pulmonary embolism, Atrial fibrillation, Atrial flutter, Atrial fibrillation and flutter, Stroke, Heart valve replacement) and medication adverse events (by ICD-9 codes: Deep vein thrombosis, Pulmonary embolism, Stroke, Myocardial infarction, Bleeding).
+
+The original Aurora Anticoagulation Anticlotting Raw dataset (ARD) was delivered in the MS Access format consisting of the following 12 tables:
+\begin{enumerate}
+  \item PATIENT AGE
+  \item PATIENT GENDER
+  \item PATIENT HEIGHTS
+  \item PATIENT RACES
+  \item PATIENT RESIDENCES
+  \item MEDICAL INDICATIONS
+  \item INTERACTING MEDICATIONS
+  \item ADVERSE EVENTS
+  \item MEDICATIONS
+  \item INR
+  \item PATIENT PROVIDER INFO
+  \item PATIENT WEIGHTS
+  \item PATIENT TOBACCO USAGE
+\end{enumerate}
+
+After a rigorous iterative process of cleaning, transformation and data quality control and assurance, the data was loaded into a working database now called \textbf{WiAD} standing for ``Wisconsin Anticoagulation Anticlotting Database''.  An interactive data profiling and population ``segmentation'' tool \textbf{WiAD-Miner} was developed in R using RStudio and used to facilitate the process of identifying those segments of the total population that satisfied inclusion criteria such as medication name, start-end date of treatment, geographical location (city and county), and number of visits. WiAD-Miner provides a user friendly interactive interface to subset the entire WiAD population and data records and presents a clear view of each extracted subset by producing statistical characteristics and visual profiling (e.g. trend of dose changes during the desired period). The extracted subsets are available for download to conduct further analyses using other tools such as SAS. 
+
+Through the following sections, the process of data cleaning, transformation, and quality control are explained.
+
+%-------------------------------------------
+\subsection{Data Transformation and Quality Control}
+%--------------------------------------------
+The process of data cleaning, data quality control and quality assurance in the context of Aurora electronic medical records (EMR) data reuse for research involves several iterative phases of data analysis and transformation.  Two related approaches for data analysis were taken; a.) data profiling and b.) data mining.  These approaches provide a statistically sound assessment of different aspects of quality at attribute and cross-attribute levels such as completeness, correctness and concordance.
+
+a.) Our data profiling analysis is conducted in three steps.  
+\textbf{First}, the method focuses on individual attributes (fields) in the provided dataset.  This step provides a statistically sound assessment of aspects of quality of each attribute including identification of various characteristics of the data such as ``type'', value range, discrete values and their frequency, distribution and variance, uniqueness, occurrence of null values, and the pattern of free text values (e.g., values under ``medication name''). 
+\textbf{Second},   the results derived in the first step   are used to handle issues on completeness (e.g., missing values at random, missing values not at random, and partial and complete duplications) by methods such as taking a ``complete case strategy'' limiting the analysis to patients with complete information for all variables, a simple deletion of all incomplete observations and or imputation and to handle issues on correctness (e.g., misspellings, awkward or inaccurate abbreviations, contradictory values, values outside of range, and unexpected changes of sequential data over time) by methods such as transforming and normalizing data elements and prepare them for integration using a data dictionary and looking for elements with values that are outside biologically valid or plausible ranges or that changed questionably or implausibly over time or zero valued elements. 
+\textbf{Third}, concordance assessments are done by; a.) Agreement analyses between elements within attributes and b.) Distribution analyses of attributes within the EMR with that of the same information from reference distributions such as similar medical practices, studies or national or state rates (e.g. AHC patient geographical distribution against statewide distributions of race and gender) using both statistical tests and GIS visualizing tools (such as Google Map). Table 1 depicts examples of data problems captured by our data profiling process.
+
+\begin{figure}[ht]
+\begin{center}
+\includegraphics[trim=20mm 165mm 10mm 20mm, clip]{dataQCproblems.pdf}
+\caption{Examples for data cleaning and quality control problems.}
+\end{center}
+\end{figure}
+
+b.) Our robust data mining process also identifies specific data patterns in the data set. Given that this is a temporal and longitudinal dataset, it is very important and useful to take advantage of descriptive data mining models to explore the data more deeply. The models such as clustering, summarization, association discovery and sequence discovery are of interest and applied in this case to explore and evaluate, for example, the pattern of treatment, level of anticoagulation control, and outcome of treatment (e.g., stroke, thromboembolic events, bleeding events, hospitalization, patterns of INR monitoring, and time in the therapeutic range) with different anticoagulation anticlotting agents in patients with different indications.
+%-------------------------------------------
+\section{General Cleaning and Quality Control}
+%--------------------------------------------
+In this section, the first round of data cleaning is conducted by taking the following steps on the demographic data: 
+\begin{itemize}
+  \item First, to identify and exclude records whose attributes' values are missing,
+  \item Second, to identify and exclude complete duplicated records,
+  \item Third, since in the final modeling and simulation study each subject should have one single value for each demographic characteristics (e.g., weight, height) and given that each subject should have been almost stable in most of the demographic characteristics during the treatment period at AHC, we have to select an aggregation function for obtaining a representative measure of longitudinal records of demographics,
+  \item Fourth, to refine the demographic data by excluding highly likely outliers.
+\end{itemize}
+
+%-------------------------------------------
+\subsection{Age}
+%--------------------------------------------
+One important point to note is that, although the ARD is a longitudinal  dataset, there is \textbf{only one Gender and one Age record} for each unique subject.
+
+<<Age_whole_population, results=tex, echo=FALSE>>=
+age.gender <- read.csv("C:/130529_AHC_DB/Original DB in Excel/DEIDENTIFIED_PATIENTS.csv", sep=",", header=T, stringsAsFactors=FALSE, check.names=FALSE)
+
+age.missing <- age.gender[is.na(age.gender$AGE),]
+cat(paste(dim(age.missing)[1], "subject(s) has missing age information. "))
+
+age.zero <- age.gender[which(age.gender$AGE==0),]
+cat(paste(dim(age.zero)[1], "subjects have age of 0. "))
+cat(paste("Subjects with age of zero or missing age are excluded from the entire study. "))
+
+#The following two lines basically identify and include the patients out of the whole population who have any age but Zero (0) and missing age.
+age.gender.whithout.zero <- age.gender[which(age.gender$AGE != 0),]
+age.gender.nafree <- na.exclude(age.gender.whithout.zero)
+
+#The following code extract age information for the warfarin cohort.
+#age.gender.warfarin.cohort <- merge(warfarin.cohort, age.gender.cleaned, by="SURROGATE_ID")
+#age.gender.warfarin.cohort <- age.gender.cleaned[which(age.gender.cleaned$SURROGATE_ID %in% warfarin.cohort.unique.id),]
+
+
+####Updating black.list.surrogate.id and useable.id#######
+##########################################################
+age.gender.cleaned <- age.gender.nafree
+black.list.surrogate.id <- c(age.zero$SURROGATE_ID, age.missing$SURROGATE_ID)
+useable.id <- age.gender.cleaned$SURROGATE_ID
+cat(paste("black list has", length(black.list.surrogate.id) , "and useable list has", length(useable.id)))
+#From this point on, we have two lists that should be refined at each step: 
+#"black.list.surrogate.id"
+#"useable.id"
+#The sum of the length of these two has to always be 157,450.
+###################################################################################
+@
+
+
+Here is the age distribution of the whole ARD population after excluding records with missing age and age of 0.
+
+<<xtable1, results=tex, echo=FALSE>>=
+library(xtable)
+age.labels <- c("<18", "18-24", "25-34", "35-44", "45-54", "55-59", "60-64", "65-74", "75-84", ">85")
+age.percentage.whole <- table(cut(age.gender.cleaned$AGE, breaks=c(-1, 17.9 , 24.9, 34.9, 44.9, 54.9, 59.9, 64.9, 74.9, 84.9, 120), right=FALSE))
+age.distribution.whole <- data.frame("Age Range" = age.labels, Percentage = round(((as.data.frame(age.percentage.whole))$Freq)/dim(age.gender.cleaned)[1]*100,2))
+xtab.age.whole <- xtable(age.distribution.whole, caption="Age Distriubtion of the Aurora Raw Data", label="Table:3")
+print(xtab.age.whole, include.rownames = FALSE)
+
+@
+
+
+\begin{figure}
+<<fig1, fig=TRUE, echo=FALSE>>=
+histPercent <- function(x, ...) {
+  H <- hist(x, plot = FALSE, breaks = 10)
+  H$density <- with(H, 100 * density* diff(breaks)[1])
+  #labs <- paste(round(H$density), "%", sep="")
+  plot(H, freq = FALSE, ylim=c(0, 1.08*max(H$density)),xlab = "Age Range (year)", ylab="Percentage", las=1, main=NULL, ...)
+}
+
+histPercent(age.gender.cleaned$AGE, col="lightblue")
+
+@
+
+\caption{ARD Population - Age Distribution}
+
+\end{figure}
+\newpage
+
+<<Excluding_Age_Less_18, results=tex, echo=FALSE>>=
+cat(paste("The number of subjects in whole poulation with an age under 18 is", length(age.gender.cleaned[which(age.gender.cleaned$AGE < 18),]$SURROGATE_ID), ".\n"))
+cat(paste("The number of subjects in whole poulation with an age over 100 is", length(age.gender.cleaned[which(age.gender.cleaned$AGE > 100),]$SURROGATE_ID), ".\n"))
+cat(paste("The number of subjects in whole poulation with an age over 110 is", length(age.gender.cleaned[which(age.gender.cleaned$AGE > 110),]$SURROGATE_ID), ".\n"))
+@
+
+\textbf{The subjects with age of 18 or lower are excluded from the study population as our study's age inclusion criteria is age 18 and over.}
+
+<<Excluding_Age_Less_18, results=tex, echo=FALSE>>=
+####Updating black.list.surrogate.id and useable.id#######
+##########################################################
+#black.list.surrogate.id <- c(age.zero$SURROGATE_ID, age.missing$SURROGATE_ID)
+age.gender.cleaned <- age.gender.cleaned[which(age.gender.cleaned$AGE >= 18),]
+black.list.surrogate.id <- setdiff(age.gender$SURROGATE_ID, age.gender.cleaned$SURROGATE_ID)
+useable.id <- age.gender.cleaned$SURROGATE_ID
+cat(paste("black list has", length(black.list.surrogate.id) , "and useable list has", length(useable.id),".\n\n"))
+
+###########################################################################################################
+#age.gender.cleaned dataframe should be used as the final cleaned and controled source of age information.#
+###########################################################################################################
+@
+
+
+\begin{quote}
+\textbf{Quality Assessment Summary:}
+\end{quote}
+\begin{quote}
+\emph{Strength:}
+\end{quote}
+\begin{itemize}
+  \item Duplication: Each subject has just one age record (no duplicated age records).
+  \item Complemetness: 1.69\% of the whole population (2663 subjects) have missing age information.
+  \item Accuracy: Number of subjects with age over 100 and 110 are 0.04\% (65 subject) and less than 0.001\% (1 subject). Given the oldest person lived in Wisconsin was 112 years old, the percentage of outlier ages is very low.
+  \item The Age distrubution of the subjects is skewed to right as expected.
+\end{itemize}
+\begin{quote}
+\emph{Weakness:}
+\end{quote}
+\begin{itemize}
+  \item Consistency: Since there is just one age record for each subject, it is not possible to check any inconsistency whithin age records of each subject.
+  \item Accuracy: Even though not requested, 357 subjects with an age under 18 were included in the provided dataset.
+\end{itemize}
+
+\textbf{After cleaning and qulaity control of the age attribute, the number of the remaining subjetcs is 154,430 (98.08\% of the total).} 
+
+%-------------------------------------------
+\subsection{Gender}
+%--------------------------------------------
+
+<<Gender_whole_population, results=tex, echo=FALSE>>=
+
+gender.missing <- age.gender.cleaned[is.na(age.gender.cleaned$GENDER),]
+#cat(paste("Gender types are:", toString(unique(age.gender.warfarin.cohort$GENDER))))
+num.f.whole <- length(which(age.gender.cleaned$GENDER=="F"))
+num.m.whole <- length(which(age.gender.cleaned$GENDER=="M"))
+num.u.whole <- length(which(age.gender.cleaned$GENDER=="U"))
+num.missing.gender.whole <- length(which(age.gender.cleaned$GENDER==""))
+#cat(paste(num.u.whole + num.missing.gender.whole, "subjects have missing gender information."))
+cat(paste(num.u.whole + num.missing.gender.whole + dim(gender.missing)[1], "subjects have missing gender information."))
+
+
+gender.type <- c("Male", "Female", "Missing")
+gender.percentage.whole <- c(round(num.m.whole/dim(age.gender.cleaned)[1]*100, 2), round(num.f.whole/dim(age.gender.cleaned)[1]*100, 2), round((num.u.whole + num.missing.gender.whole)/dim(age.gender.cleaned)[1]*100,2))
+gender.distribution.whole <- data.frame(Gender = gender.type, Percentage = gender.percentage.whole)
+#gender.distribution
+@
+
+Here is the gender distribution of the ARD (Table 4) and also that of Milwaukee County and the State of Wisconsin (Table 5) for comparison. 
+
+<<xtable1, results=tex, echo=FALSE>>=
+require(xtable)
+xtab.gender.whole <- xtable(gender.distribution.whole, caption="Gender Distriubtion in the Aurora Raw Data", label="Table:1")
+print(xtab.gender.whole, include.rownames = FALSE)
+
+gender.mke <- c(48.3, 51.7)
+gender.wi <- c(49.6, 50.4)
+gender.mke.wi <- data.frame("MKE(%)"= gender.mke,"WI(%)"= gender.wi, check.names=FALSE)
+rownames(gender.mke.wi) <- c("Male", "Female")
+
+xtab.gender.mke.wi <- xtable(gender.mke.wi, caption="Gender Distriubtion in Milwaukee County (MKE) and Wisconsin (WI).", label="Table:1")
+print(xtab.gender.mke.wi, include.rownames = TRUE)
+@
+
+
+\textbf{The subjects with missing gender are excluded from the study population.}
+
+<<xtable1, results=tex, echo=FALSE>>=
+####Updating black.list.surrogate.id and useable.id#######
+##########################################################
+age.gender.cleaned <- age.gender.cleaned[which(age.gender.cleaned$GENDER =="F" | age.gender.cleaned$GENDER=="M"), ]
+black.list.surrogate.id <- setdiff(age.gender$SURROGATE_ID, age.gender.cleaned$SURROGATE_ID)
+useable.id <- age.gender.cleaned$SURROGATE_ID
+cat(paste("black list has", length(black.list.surrogate.id) , "and useable list has", length(useable.id), ".\n\n"))
+
+##############################################################################################################
+#age.gender.cleaned dataframe should be used as the final cleaned and controled source of gender information.#
+##############################################################################################################
+@
+
+\newpage
+
+\begin{quote}
+\textbf{Quality Assessment Summary:}
+\end{quote}
+\begin{quote}
+\emph{Strength:}
+\end{quote}
+\begin{itemize}
+  \item Duplication: No duplicated gender records.
+  \item Complemetness: Almost whole the pouplation (except 16 subjects) have gender information.
+  \item Accuracy: The gender distribution is very much consistent with that of Milwaukee County and State of Wisconsin.
+\end{itemize}
+\begin{quote}
+\emph{Weakness:}
+\end{quote}
+\begin{itemize}
+  \item Consistency: Since there is just one gender record for each subject, it is not possible to check any inconsistency whithin gender records of each subject.
+\end{itemize}
+
+\textbf{After cleaning and qulaity control of the gender attribute, the number of the remaining subjetcs is 154,414 (98.07\% of the total).} 
+
+%-------------------------------------------
+\subsection{Race}
+%--------------------------------------------
+In the ARD, each subject has one race record. Race has the following attributes:
+SURROGATE\_ID, RACE, SOURCE\_SYSTEM.
+Since race is a required information for the future analysis, I have to check to make sure if there is any subject with missing race information and if so exclude them.
+
+<<sessionInfo, results=tex, echo=FALSE>>=
+races <- read.csv("C:/130529_AHC_DB/Original DB in Excel/DEIDENTIFIED_PATIENT_RACES.csv", sep=",", stringsAsFactors=FALSE)
+races.type <- unique(races$RACE)
+writeLines(strwrap(capture.output(cat(paste("Race types are:", toString(unique(races$RACE)),". " )))))
+races.NAfree <- races[races$RACE != "UNKNOWN",]
+#cat(paste(dim(races)[1]-dim(races.NAfree)[1], "record(s) of the table Races has missing race information."))
+
+races.c <- unique(races.NAfree)
+#Since there is no duplicate race record, I do not print out the following line.
+#cat(paste("There is", dim(races.NAfree)[1]-dim(races.c)[1], "duplicate race records."))
+
+cat(paste(dim(races)[1]-dim(races.NAfree)[1], "subjects have UNKNOWN race information. "))
+cat(paste(round(dim(races.c)[1]/dim(age.gender.cleaned)[1]*100, 2), "percent of the whole population have race information."))
+num.w <- length(which(races.c$RACE=="White"))
+num.aa <- length(which(races.c$RACE=="Black or African American"))
+num.as <- length(which(races.c$RACE=="Asian"))
+num.ai <- length(which(races.c$RACE=="American Indian or Alaskan Native"))
+num.nh <- length(which(races.c$RACE=="Native Hawaiian/Other Pacific Islander"))
+
+races.percentage <- c(round(num.w/dim(races.c)[1]*100, 2), round(num.aa/dim(races.c)[1]*100, 2), round(num.as/dim(races.c)[1]*100, 2), round(num.ai/dim(races.c)[1]*100, 2), round((num.nh)/dim(races.c)[1]*100,2))
+races.distribution <- data.frame(Race = races.type[-3], Percentage = races.percentage)
+@
+
+The following table depics the race distribution of the ARD population.
+
+<<xtable3, results=tex, echo=FALSE>>=
+xtab.races <- xtable(races.distribution, caption="Race Distriubtion in the Aurora Raw Data", label="Table:3")
+print(xtab.races, include.rownames = FALSE)
+@ 
+
+<<xtable1, results=tex, echo=FALSE>>=
+####Updating black.list.surrogate.id and useable.id#######
+##########################################################
+#age.gender.cleaned <- age.gender.cleaned[which(age.gender.cleaned$GENDER =="F" | age.gender.cleaned$GENDER=="M"), ]
+black.list.surrogate.id <- unique(c(black.list.surrogate.id, races[races$RACE == "UNKNOWN",]$SURROGATE_ID))
+useable.id <- intersect(useable.id, races.c$SURROGATE_ID)
+cat(paste("black list has", length(black.list.surrogate.id) , "and useable list has", length(useable.id), ".\n\n"))
+
+#################################################################################################
+#races.c dataframe should be used as the final cleaned and controled source of race information.#
+#################################################################################################
+                      
+   ############################                
+   ##                        ##  
+   ##                        ##    
+#####Master Demographic Table#####
+demographic.master.table <- merge(age.gender.cleaned, races.c, by = "SURROGATE_ID")
+demographic.master.table <- subset(demographic.master.table, select = -c(SOURCE_SYSTEM.x, SOURCE_SYSTEM.y))
+@
+
+
+\begin{quote}
+\textbf{Quality Assessment Summary:}
+\end{quote}
+\begin{quote}
+\emph{Strength:}
+\end{quote}
+\begin{itemize}
+  \item Duplication: No duplicated race records.
+  \item Complemetness: 1.9\% of the subjects with race information have race record of "UNKNOWN".
+  \item Accuracy: The percentages of White and African-American among the subjects with race information are approximately equal to those for State of Wisconsin.
+\end{itemize}
+\begin{quote}
+\emph{Weakness:}
+\end{quote}
+\begin{itemize}
+  \item Completeness: 52.85\% of the whole population have race information.
+  \item Accuracy: Since there is just one race record for each subject, it is not possible to check the accuracy of the race information for each subject.
+\end{itemize}
+
+\textbf{After cleaning and qulaity control of the race attribute, the number of the remaining subjetcs is 80,885 (51.37\% of the total).} 
+
+
+%-------------------------------------------
+\subsection{Height}
+%--------------------------------------------
+In the ARD, each subject has multiple height records. Height has the following attributes:
+SURROGATE\_ID, EFFECTIVE\_DAY, HEIGHT, SOURCE\_SYSTEM.
+
+For the height records, a few steps are taken:
+\begin{itemize}
+  \item First, to identify and exclude height records whose HEIGHT attributes are missing.
+  \item Second, to identify and exclude duplicated height records.
+  \item Third, since in the final modeling and simulation study each subject should have one height record and given that each subject should have been almost stable in height during the treatment period at AHC, we take the median of each subject's height records and take it as the representative height of the subject. 
+  \item Fourth, the height medians are refined by excluding the ones that here are considered outliers (i.e., median heights over or lower than 3 standard deviations). 
+\end{itemize} 
+
+<<sessionInfo, results=tex, echo=FALSE>>=
+heights <- read.csv("C:/130529_AHC_DB/Original DB in Excel/DEIDENTIFIED_PATIENT_HEIGHTs.csv", sep=",", stringsAsFactors=FALSE)
+
+#Get rid of records without height information.
+heights.missing <-heights$HEIGHT[is.na(heights$HEIGHT)]
+#cat(paste(length(heights.missing), "record(s) of the table Heights has missing height information."))
+
+#Get rid of duplicate height records.
+heights.unique <- unique(heights)
+cat(paste("Heights records include", dim(heights)[1]-dim(heights.unique)[1], "duplicate records."))
+#print(paste(round(length(unique(heights.unique$SURROGATE_ID))/dim(patients.c)[1]*100, 2), "percent of whole population have height information."))
+cat(paste("The ARD poulation on average has", round(dim(heights.unique)[1]/length(unique(heights.unique$SURROGATE_ID)), 2), "height records/subject."))
+
+#Height Median
+heights.freq <- data.frame(table(heights.unique$SURROGATE_ID), row.names=NULL)
+heights.merged <- merge(heights.unique, heights.freq, by.x="SURROGATE_ID", by.y="Var1")
+tableMed <- merge(aggregate(HEIGHT ~ SURROGATE_ID, data = heights.merged, FUN = median), heights.merged, by.x="SURROGATE_ID", by.y="SURROGATE_ID")
+
+heights.refined <- unique(as.data.frame(cbind(tableMed$SURROGATE_ID, tableMed$HEIGHT.x)))
+cat(paste("The average height of the original poulation is", round(mean(heights.refined$V2), 2) ,"inch."))
+
+heights.sd <- sd(heights.refined$V2)
+heights.mean <- mean(heights.refined$V2)
+
+heights.refined2 <- heights.refined[which(heights.refined$V2 < heights.mean + 3 * heights.sd & heights.refined$V2 > heights.mean - 3 * heights.sd),]
+colnames(heights.refined2) <- c("SURROGATE_ID", "HEIGHT")
+
+cat(paste(" ", dim(heights.refined)[1] - dim(heights.refined2)[1], "have outlier height. "))
+
+@
+
+<<xtable1, results=tex, echo=FALSE>>=
+####Updating black.list.surrogate.id and useable.id#######
+##########################################################
+#age.gender.cleaned <- age.gender.cleaned[which(age.gender.cleaned$GENDER =="F" | age.gender.cleaned$GENDER=="M"), ]
+black.list.surrogate.id <- unique(c(black.list.surrogate.id, setdiff(heights.refined$V1, heights.refined2$SURROGATE_ID)))
+useable.id <- intersect(useable.id, heights.refined2$SURROGATE_ID)
+#cat(paste("black list has", length(black.list.surrogate.id) , "and useable list has", length(useable.id)))
+
+cat("\nblack list has", length(black.list.surrogate.id), "subjects" , "and useable list has", length(useable.id), "subjects.\n\n")
+
+############################################################################################################
+#heights.refined2 dataframe should be used as the final cleaned and controled source of height information.#
+############################################################################################################
+                      
+   ############################                
+   ##                        ##  
+   ##                        ##    
+#####Master Demographic Table#####
+demographic.master.table <- merge(demographic.master.table, heights.refined2, by = "SURROGATE_ID")
+
+@
+
+
+\begin{quote}
+\textbf{Quality Assessment Summary:}
+\end{quote}
+\begin{quote}
+\emph{Strength:}
+\end{quote}
+\begin{itemize}
+  \item Duplication: No duplicated race records.
+  \item Complemetness: 1.9\% of the subjects with race information have race record of "UNKNOWN".
+  \item Accuracy: The percentages of White and African-American among the subjects with race information are approximately equal to those for State of Wisconsin.
+\end{itemize}
+\begin{quote}
+\emph{Weakness:}
+\end{quote}
+\begin{itemize}
+  \item Completeness: 52.85\% of the whole population have race information.
+  \item Accuracy: Since there is just one race record for each subject, it is not possible to check the accuracy of the race information for each subject.
+\end{itemize}
+
+
+\textbf{After cleaning and qulaity control of the height attribute, the number of the remaining subjetcs is 63,550 (40.36\% of the total).}
+
+%-------------------------------------------
+\subsection{Weight}
+%--------------------------------------------
+In the ARD, each subject has multiple weight records. Weight has the following attributes:
+SURROGATE\_ID, EFFECTIVE\_DAY, WEIGHT, SOURCE\_SYSTEM.
+
+For the weight records, a few steps are taken:
+\begin{itemize}
+  \item First, to identify and exclude weight records whose WEIGHT attributes are missing.
+  \item Second, to identify and exclude duplicated weight records.
+  \item Third, since in the final modeling and simulation study each subject should have one weight record and given that each subject should have been almost stable in weight during the treatment period at AHC, we take the median of each subject's weight records and take it as the representative weight of the subject. 
+  \item Fourth, the weight medians are refined by excluding the ones that here are considered outliers (i.e., median weights over or lower than 3 standard deviations). 
+\end{itemize}
+
+
+<<sessionInfo, results=tex, echo=FALSE>>=
+weights <- read.csv("C:/130529_AHC_DB/Original DB in Excel/DEIDENTIFIED_PATIENT_WEIGHTs.csv", sep=",", stringsAsFactors=FALSE)
+
+#Get rid of records without weight information.
+weights.missing <-weights$HEIGHT[is.na(weights$WEIGHT)]
+#cat(paste(length(weights.missing), "record(s) of the table Weights has missing weight information."))
+
+#Get rid of duplicate weight records.
+weights.unique <- unique(weights)
+cat(paste("Weights records include", dim(weights)[1]-dim(weights.unique)[1], "duplicate records."))
+#print(paste(round(length(unique(weights.unique$SURROGATE_ID))/dim(patients.c)[1]*100, 2), "percent of whole population have weight information."))
+cat(paste("The ARD poulation on average has", round(dim(weights.unique)[1]/length(unique(weights.unique$SURROGATE_ID)), 2), "weight records/subject."))
+
+#Weight Median
+weights.freq <- data.frame(table(weights.unique$SURROGATE_ID), row.names=NULL)
+weights.merged <- merge(weights.unique, weights.freq, by.x="SURROGATE_ID", by.y="Var1")
+tableMed.weight <- merge(aggregate(WEIGHT ~ SURROGATE_ID, data = weights.merged, FUN = median), weights.merged, by.x="SURROGATE_ID", by.y="SURROGATE_ID")
+
+weights.refined <- unique(as.data.frame(cbind(tableMed.weight$SURROGATE_ID, tableMed.weight$WEIGHT.x)))
+cat(paste("The average weight of the original poulation is", round(mean(weights.refined$V2), 2) ,"pound."))
+
+weights.sd <- sd(weights.refined$V2)
+weights.mean <- mean(weights.refined$V2)
+
+weights.refined2 <- weights.refined[which(weights.refined$V2 < weights.mean + 3 * weights.sd & weights.refined$V2 > weights.mean - 3 * weights.sd),]
+colnames(weights.refined2) <- c("SURROGATE_ID", "WEIGHT")
+
+cat(paste(" ", dim(weights.refined)[1] - dim(weights.refined2)[1], "have outlier weight. "))
+
+############################################################################################################
+#weights.refined2 dataframe should be used as the final cleaned and controled source of weight information.#
+############################################################################################################
+
+   ############################                
+   ##                        ##  
+   ##                        ##    
+#####Master Demographic Table#####
+demographic.master.table <- merge(demographic.master.table, weights.refined2, by = "SURROGATE_ID")
+@
+
+<<xtable1, results=tex, echo=FALSE>>=
+####Updating black.list.surrogate.id and useable.id#######
+##########################################################
+#age.gender.cleaned <- age.gender.cleaned[which(age.gender.cleaned$GENDER =="F" | age.gender.cleaned$GENDER=="M"), ]
+black.list.surrogate.id <- unique(c(black.list.surrogate.id, setdiff(weights.refined$V1, weights.refined2$SURROGATE_ID)))
+useable.id <- intersect(useable.id, weights.refined2$SURROGATE_ID)
+#cat(paste("black list has", length(black.list.surrogate.id) , "and useable list has", length(useable.id)))
+
+cat("\nblack list has", length(black.list.surrogate.id), "subjects" , "and useable list has", length(useable.id), "subjects.\n\n ")
+@
+
+
+\begin{quote}
+\textbf{Quality Assessment Summary:}
+\end{quote}
+\begin{quote}
+\emph{Strength:}
+\end{quote}
+\begin{itemize}
+  \item Duplication: No duplicated race records.
+  \item Complemetness: 1.9\% of the subjects with race information have race record of "UNKNOWN".
+  \item Accuracy: The percentages of White and African-American among the subjects with race information are approximately equal to those for State of Wisconsin.
+\end{itemize}
+\begin{quote}
+\emph{Weakness:}
+\end{quote}
+\begin{itemize}
+  \item Completeness: 52.85\% of the whole population have race information.
+  \item Accuracy: Since there is just one race record for each subject, it is not possible to check the accuracy of the race information for each subject.
+\end{itemize}
+
+
+\textbf{After cleaning and qulaity control of the weight attribute, the number of the remaining subjetcs is 62,504 (39.69\% of the total).}
+
+
+%-------------------------------------------
+\subsection{Tobacco Use}
+%--------------------------------------------
+In the ARD, each subject has multiple ``Tobacco Use'' records as this information was recorded on different days of visit. The records have the following attributes:
+SURROGATE\_ID, EFFECTIVE\_DAY, TOBACCO\_USE, SOURCE\_SYSTEM.
+
+For the Tobacco Use records, a few steps are taken:
+\begin{itemize}
+  \item First, to identify and exclude Tobacco Use records whose TOBACCO\_USE attributes are missing.
+  \item Second, to identify and exclude duplicated records.
+  \item Third, to identify and exclude non-sense records.
+  \item Fourth, to normalize and transform the values under attribute TOBACCO\_USE using a dictionary.
+  \end{itemize}
+  
+\begin{quote}
+\textbf{Non-sense or inaccurate records:}
+\end{quote}
+In some records, TOBACCO\_USE values are not relevant or accurate such as the followings:
+``admit to icu'', ``30 day readmit'', and ``already done''. Any record with such TOBACCO\_USE values are deleted.
+
+\begin{quote}
+\textbf{Normalization and Transformation:}
+\end{quote}
+Relevant TOBACCO\_USE values are not consistent in terms of spelling and format. After normalization, a dictionary is used to translate and transform the values to those of desired for the modeling and simulation study. Each reported sensible TOBACCO\_USE value is translated into one of the followings: current, not-current, never, or unknown. 
+Majority of subjetcs have the same tobacco use behavior during the course of their treatment. In some subjects, the tobacco use behavior has changed over time. The reported tobacco use behavior of some subjects looks conflicting. For instance, both records ``Current''  and ``Never'' were reported for some subjects.
+
+\textbf{This white paper explores the butterfly effect of poor data quality on CRM, ERP, billing, data 
+warehouse, and other enterprise systems.}
+
+
+<<sessionInfo, results=tex, echo=FALSE>>=
+tobacco <- read.csv("C:/130529_AHC_DB/Original DB in Excel/DEIDENTIFIED_PATIENT_TOBACCO_USAGE.csv", sep=",", stringsAsFactors=FALSE)
+tobacco.cleaned <- read.csv("C:/130529_AHC_DB/Original DB in Excel/DEIDENTIFIED_PATIENT_TOBACCO_USAGE_Cleaned.csv", sep=",", stringsAsFactors=FALSE)
+
+#dim(tobacco)[1] - dim(tobacco.cleaned)[1]#The number records with non-sense TOBACCO_USE values: 33684
+
+tobacco.missing1 <- tobacco[is.na(tobacco$TOBACCO_USE),]#2
+tobacco.missing2 <- tobacco[tobacco$TOBACCO_USE=="",]#0
+#cat(paste(dim(tobacco.missing1)[1], "subject(s) has missing tobacco use information. "))
+
+tobacco <- tobacco[!is.na(tobacco$TOBACCO_USE),]
+
+#tobacco <- unique(tobacco)
+
+tobacco.dic <- read.csv("13 07 21 tobacco.dictionary.csv", sep=",", header=T, stringsAsFactors=FALSE, check.names=FALSE)
+#tobacco.dic <- data.frame(TOBACCO_USE= tolower(as.character(tobacco.dic$TOBACCO_USE)), VALUE= tolower(as.character(tobacco.dic$VALUE)))
+
+#Translate TOBACCO_USE in tobacco
+tobacco.fun <- function(f) tobacco.dic[which(tobacco.dic$TOBACCO_USE==f),]$VALUE_Digit
+tobacco.TOBACCO_USE <- as.character(tobacco.cleaned$TOBACCO_USE)
+tobacco.list <- sapply(tobacco.TOBACCO_USE, tobacco.fun)
+tobacco.use <- unlist(tobacco.list, use.names=F)
+
+#Add a new column to dataframe "tobacco" as "Tobacco"
+tobacco.refined <- cbind(tobacco.cleaned, Frequency =tobacco.use)
+
+@
+
+
+
+<<sessionInfo, results=tex, echo=FALSE>>=
+#combination variations of the VALUE_Digit(s) and their product:
+#current: 2 >>>number of subjects: 15040
+#not_current: 3 >>> 33109
+#never: 5 >>> 42941
+#unknown: 7 >>> 188
+#current & not_current:6 >>> 3125
+#current & never:10 >>> 716
+#current & unknown: 14 >>> 121
+#not_current & never: 15 >>> 9713
+#not_current & unknown: 21 >>> 243
+#never & unknown: 35 >>> 403
+#current & not_current & never: 30 >>> 725
+#current & not_current & unknown: 42 >>> 46
+#current & never & unknown: 70 >>> 18
+#not_current & never & unknown: 105 >>> 232
+#current & not_current & never & unknown: 210 >>> 50
+
+subtobacco <- subset(tobacco.refined, select=c(SURROGATE_ID, Frequency))
+subtobacco.unique <- unique(subtobacco)
+aggdatatobacco <-aggregate(subtobacco.unique$Frequency, by=list(subtobacco.unique$SURROGATE_ID), FUN=prod, na.rm=TRUE)
+tobacco.use.values.combination.dist <- as.data.frame(table(aggdatatobacco$x))
+rownames(tobacco.use.values.combination.dist) <- c("Current", "Not_current", "Never", "Unknown", "Current & Not_current", "Current & Never", "Current & Unknown", "Not_current & Never", "Not_current & Unknown", "Never & Unknown", "Current, Not_current & Never", "Current, Not_current & Unknown", "Current, Never & Unknown", "Not_current, Never & Unknown", "Current, Not_current, Never & Unknown")
+tobacco.use.values.combination.dist$Freq <- tobacco.use.values.combination.dist$Freq[c(1,2,3,5,4,6,7,8,9,11,10,12,13,14,15)] 
+colnames(tobacco.use.values.combination.dist) <- c("Combination", "Number of Subjects")
+@
+
+
+The following table shows the distribution of tobacco use values for the subjects with that information. 
+
+<<xtable1, results=tex, echo=FALSE>>=
+require(xtable)
+tobacco.use.values.combination.dist <- subset(tobacco.use.values.combination.dist, select=c("Number of Subjects"))
+xtab.tobacco.use.values.combination <- xtable(tobacco.use.values.combination.dist, caption="Distribution of Combination of Tobacco Use Values.", label="Table:1", align=c('c', 'c'))
+print(xtab.tobacco.use.values.combination, include.rownames = TRUE)
+@
+
+<<xtable1, results=tex, echo=FALSE>>=
+####Updating black.list.surrogate.id and useable.id#######
+##########################################################
+
+black.list.surrogate.id <- unique(c(black.list.surrogate.id, setdiff(tobacco$SURROGATE_ID, tobacco.refined$SURROGATE_ID)))
+useable.id <- intersect(useable.id, tobacco.refined$SURROGATE_ID)
+#cat(paste("black list has", length(black.list.surrogate.id) , "and useable list has", length(useable.id)))
+
+cat("\nblack list has", length(black.list.surrogate.id), "subjects" , "and useable list has", length(useable.id), "subjects.\n\n ")
+
+   ############################                
+   ##                        ##  
+   ##                        ## 
+##############################################################################################################
+#tobacco.refined dataframe should be used as the final cleaned and controled source of tobacco information.  #
+#Unlike the above demographic characteristics, each subject might have different tobacco use behavior during #
+#his/her treatment. So, the tobacco.refined dataframe includes multiple tobacco use records for each subject.#
+##############################################################################################################
+
+@
+@
+
+The subjects with any of the following reported combination of tobacco use bahaviors were excluded: ``Current \& Never'', ``Current, Not current \& Never'', ``Current, Never \& Unknown'', and ``Current, Not current, Never \& Unknown''. 
+
+
+\begin{quote}
+\textbf{Quality Assessment Summary:}
+\end{quote}
+\begin{quote}
+\emph{Strength:}
+\end{quote}
+\begin{itemize}
+  \item Duplication: The percentage of duplicated records is very low.
+  \item Accuracy: A small number of subjects with tobacco use information have non-sensible information (0.59\%). 
+  \item The reported changes of tobacco use behavior of majority of the subjects look consistent. 
+\end{itemize}
+\begin{quote}
+\emph{Weakness:}
+\end{quote}
+\begin{itemize}
+  \item Completeness: 67.74\% (106,670 subjects) of the whole population have sensible tobacco use information.
+  \item Accuracy: The reported change of tobacco use behavior of 1509 subjects over time looks conflicting (1.4\%). 
+\end{itemize}
+
+
+\textbf{After cleaning and qulaity control of the tobacco use attribute, the number of the remaining subjetcs is 61,565 (39.10\% of the total).}
+
+
+
+
+
+%-------------------------------------------
+\section{General Overview of the Medications Records}
+%--------------------------------------------
+The Auroa Raw Dataset (ARD) includes 2,349,633 longitudinal medication records representing 157,450 unique subjects. As a result of being a longitudinal dataset, each subject has more than one medication record. 
+
+%-------------------------------------------
+\subsection{Medications Records' Attributes}
+%--------------------------------------------
+Each medication record has the following attributes:
+\begin{itemize}
+  \item SURROGATE\_ID
+  \item DAY\_PRESCRIBED
+  \item MEDICATION\_NAME
+  \item FREQ, 
+  \item DOSE\_QTY
+  \item DOSE\_QTY\_UNIT
+  \item SOURCE\_SYSTEM
+\end{itemize}
+
+
+%-------------------------------------------
+\subsection{Distribution of Medications Records}
+%--------------------------------------------
+First, I have to identify any specific medication cohort by extracting any records in the Aurora Raw Dataset (ARD)'s Medications records including any of the following terms:
+\begin{itemize}
+  \item Warfarin or Coumadin
+  \item Heparin
+  \item Clopidogrel or Plavix
+  \item Dabigatran or Pradaxa
+  \item Eptifibatide or Integrilin
+  \item Abciximab or ReoPro
+  \item Ticlopidine or Ticlid
+  \item Tirofiban or Aggrastat
+  \item Dipyridamole or Persantine
+\end{itemize}
+
+After identifying the records, they have to be cleaned and transfomred for the following issues:
+\begin{itemize}
+  \item Duplications
+  \item Free Text Embedded values
+\end{itemize}
+
+The free text embedded values of the medication cohorts are used to extract dosage, unit, and route.
+
+Then the next step is to take a strategy on how to deal with the incomplete records as we need records including name of the medication, day prescribed, frequency of the medication, dosage of the medication, unit, and probably medication route.
+
+<<sessionInfo, results=tex, echo=FALSE>>=
+#The Name of Dataframes follow a specific format denoting two different things:
+#A Dataframe including the name of the medication of interest regardless of existing of dosage information in the records.
+#Naming format: NameOfMedication.cohort.whole
+#A Dataframe including the name of the medication of interest and the dosage. This dataframe is a part of the above dataframe. In other words, the following dataframe does not include the records which do not have any dose information.
+#Naming format: NameOfMedication.cohort
+
+medications <- read.csv("C:/130529_AHC_DB/Original DB in Excel/DEIDENTIFIED_MEDICATIONS.txt", sep=",", header=T, stringsAsFactors=FALSE, check.names=FALSE)
+#cat(paste("The medications records represent", length(unique(medications$SURROGATE_ID)), "unique subjects."))
+
+#medications.missing <- medications[is.na(medications$FREQ),]#0
+medications.missing <- medications[medications$FREQ=="",]
+cat(paste(dim(medications.missing)[1], "medications records have missing Frequency information. "))
+
+#1-Heparin
+heparin.cohort <- subset(medications,grepl("(Heparin|heparin).*(\\d)+.*units.*", MEDICATION_NAME, ignore.case = TRUE))
+#dim(heparin.cohort)
+#cat(paste("The heparin cohort records (", round(dim(heparin.cohort)[1]/dim(medications)[1]*100, 2) , "% of whole the medication records) represent", round(length(unique(heparin.cohort$SURROGATE_ID)), 0), "unique subjects."))
+
+heparin.cohort.whole <- subset(medications,grepl("(Heparin|heparin)", MEDICATION_NAME, ignore.case = TRUE))
+#dim(heparin.cohort)
+#cat(paste("The heparin cohort records (", round(dim(heparin.cohort.whole)[1]/dim(medications)[1]*100, 2) , "% of whole the medication records) represent", length(unique(heparin.cohort.whole$SURROGATE_ID)), "unique subjects."))
+
+heparin.distribution <- c(round(dim(heparin.cohort.whole)[1]/dim(medications)[1]*100, 2), round(length(unique(heparin.cohort.whole$SURROGATE_ID)), 0), round(dim(heparin.cohort)[1]/dim(medications)[1]*100, 2), round(length(unique(heparin.cohort$SURROGATE_ID)), 0))
+
+#2-Warfarin(Coumadin)
+warfarin.cohort <- subset(medications,grepl("(warfarin|Warfarin|coumadin|Coumadin).*(\\d)+.*mg.*", MEDICATION_NAME, ignore.case = TRUE))
+
+warfarin.cohort.whole <- subset(medications,grepl("(warfarin|Warfarin|coumadin|Coumadin)", MEDICATION_NAME, ignore.case = TRUE))
+
+warfarin.distribution <- c(round(dim(warfarin.cohort.whole)[1]/dim(medications)[1]*100, 2), round(length(unique(warfarin.cohort.whole$SURROGATE_ID)), 0), round(dim(warfarin.cohort)[1]/dim(medications)[1]*100, 2), round(length(unique(warfarin.cohort$SURROGATE_ID)), 0))
+
+####Extracting Dosage from column "MEDICATION_NAME" and add a new column to dataframe "warfarin.cohort" called "DOSE"
+warfarin.cohort.with.more.than.one.digit <- subset(warfarin.cohort,grepl("(((\\d+.*\\d*)|(.\\d+))(\\w+|\\s+)){2,}", MEDICATION_NAME, ignore.case = TRUE))
+
+warfarin.subset.with.single.digit <- subset(warfarin.cohort, !(MEDICATION_NAME %in% warfarin.cohort.with.more.than.one.digit$MEDICATION_NAME))
+
+warfarin.medication.name <- warfarin.subset.with.single.digit$MEDICATION_NAME
+#split string at non-digits
+warfarin.dose.string <- strsplit(warfarin.medication.name, "[^[:digit:]|[:digit:][:punct:][:digit:]]")
+#convert strings to numeric ("" become NA)
+warfarin.dose.numeric <- as.numeric(unlist(warfarin.dose.string))
+#remove NA and duplicates
+warfarin.dose <- warfarin.dose.numeric[!is.na(warfarin.dose.numeric)]
+#Add a new column to dataframe "warfarin.cohort"
+#colnames(warfarin.cohort)
+warfarin.cohort <- cbind(warfarin.subset.with.single.digit, Dose = warfarin.dose)
+#The above "warfarin.cohort" records are the ones that their "MEDICATION_NAME"s just have one single digit as dose. 
+#dim(warfarin.cohort)
+#length(warfarin.dose)
+
+#dim(warfarin.cohort)[1]#258159
+#length(unique(warfarin.cohort$SURROGATE_ID))#51893
+
+warfarin.dic <- read.csv("13 07 17 FREQ_Dictionary.csv", sep=",", header=T, stringsAsFactors=FALSE, check.names=FALSE)
+#does warfarin cohort.warfarin have any NA under FREQ?
+#warfarin.cohort.na <- warfarin.cohort[is.na(warfarin.cohort$FREQ),]#Answer: 0
+#Delete warfarin.cohort records with blank FREQ
+warfarin.cohort <- warfarin.cohort[warfarin.cohort$FREQ !="",]#90797 records out of 258159 are deleted.
+
+#Translate FREQ in warfarin.cohort
+warfarin.cohort.freq.fun <- function(f) as.numeric(warfarin.dic[which(warfarin.dic$FREQ==f),]$Weekly)
+warfarin.cohort.freq.list <- sapply(warfarin.cohort$FREQ, warfarin.cohort.freq.fun)
+warfarin.cohort.freq.numeric <- unlist(warfarin.cohort.freq.list, use.names=F)
+
+#Add a new column to dataframe "warfarin.cohort" as Frequency
+warfarin.cohort <- cbind(warfarin.cohort, Frequency =warfarin.cohort.freq.numeric)
+
+#dim(warfarin.cohort)[1]#167362
+#length(unique(warfarin.cohort$SURROGATE_ID))#46598
+
+#3-Clopidogrel(Plavix)
+clopidogrel.cohort <- subset(medications,grepl("(Clopidogrel|Plavix).*(\\d)+.*mg.*", MEDICATION_NAME, ignore.case = TRUE))
+
+clopidogrel.cohort.whole <- subset(medications,grepl("(Clopidogrel|plavix)", MEDICATION_NAME, ignore.case = TRUE))
+
+clopidogrel.distribution <- c(round(dim(clopidogrel.cohort.whole)[1]/dim(medications)[1]*100, 2), round(length(unique(clopidogrel.cohort.whole$SURROGATE_ID)), 0), round(dim(clopidogrel.cohort)[1]/dim(medications)[1]*100, 2), round(length(unique(clopidogrel.cohort$SURROGATE_ID)), 0))
+
+#4-Dabigatran(Pradaxa)
+dabigatran.cohort <- subset(medications,grepl("(Dabigatran|Pradaxa).*(\\d)+.*mg.*", MEDICATION_NAME, ignore.case = TRUE))
+
+dabigatran.cohort.whole <- subset(medications,grepl("(Dabigatran|Pradaxa)", MEDICATION_NAME, ignore.case = TRUE))
+
+dabigatran.distribution <- c(round(dim(dabigatran.cohort.whole)[1]/dim(medications)[1]*100, 2), round(length(unique(dabigatran.cohort.whole$SURROGATE_ID)), 0), round(dim(dabigatran.cohort)[1]/dim(medications)[1]*100, 2), round(length(unique(dabigatran.cohort$SURROGATE_ID)), 0))
+
+#5-Eptifibatide(Integrilin)
+eptifibatide.cohort <- subset(medications,grepl("(Eptifibatide|Integrilin).*(\\d)+.*mg.*", MEDICATION_NAME, ignore.case = TRUE))
+
+eptifibatide.cohort.whole <- subset(medications,grepl("(Eptifibatide|Integrilin)", MEDICATION_NAME, ignore.case = TRUE))
+
+eptifibatide.distribution <- c(round(dim(eptifibatide.cohort.whole)[1]/dim(medications)[1]*100, 2), round(length(unique(eptifibatide.cohort.whole$SURROGATE_ID)), 0), round(dim(eptifibatide.cohort)[1]/dim(medications)[1]*100, 2), round(length(unique(eptifibatide.cohort$SURROGATE_ID)), 0))
+
+#6-Abciximab(ReoPro)
+abciximab.cohort <- subset(medications,grepl("(Abciximab|ReoPro).*(\\d)+.*mg.*", MEDICATION_NAME, ignore.case = TRUE))
+
+abciximab.cohort.whole <- subset(medications,grepl("(Abciximab|ReoPro)", MEDICATION_NAME, ignore.case = TRUE))
+
+abciximab.distribution <- c(round(dim(abciximab.cohort.whole)[1]/dim(medications)[1]*100, 2), round(length(unique(abciximab.cohort.whole$SURROGATE_ID)), 0), round(dim(abciximab.cohort)[1]/dim(medications)[1]*100, 2), round(length(unique(abciximab.cohort$SURROGATE_ID)), 0))
+
+#7-Ticlopidine(Ticlid)
+ticlopidine.cohort <- subset(medications,grepl("(Ticlopidine|Ticlid).*(\\d)+.*mg.*", MEDICATION_NAME, ignore.case = TRUE))
+
+ticlopidine.cohort.whole <- subset(medications,grepl("(Ticlopidine|Ticlid)", MEDICATION_NAME, ignore.case = TRUE))
+
+ticlopidine.distribution <- c(round(dim(ticlopidine.cohort.whole)[1]/dim(medications)[1]*100, 2), round(length(unique(ticlopidine.cohort.whole$SURROGATE_ID)), 0), round(dim(ticlopidine.cohort)[1]/dim(medications)[1]*100, 2), round(length(unique(ticlopidine.cohort$SURROGATE_ID)), 0))
+
+#8-Tirofiban(Aggrastat)
+tirofiban.cohort <- subset(medications,grepl("(Tirofiban|Aggrastat).*(\\d)+.*mg.*", MEDICATION_NAME, ignore.case = TRUE))
+
+tirofiban.cohort.whole <- subset(medications,grepl("(Tirofiban|Aggrastat)", MEDICATION_NAME, ignore.case = TRUE))
+
+tirofiban.distribution <- c(round(dim(tirofiban.cohort.whole)[1]/dim(medications)[1]*100, 2), round(length(unique(tirofiban.cohort.whole$SURROGATE_ID)), 0), round(dim(tirofiban.cohort)[1]/dim(medications)[1]*100, 2), round(length(unique(tirofiban.cohort$SURROGATE_ID)), 0))
+
+#9-Dipyridamole(Persantine)
+dipyridamole.cohort <- subset(medications,grepl("(Persantine|dipyridamole).*(\\d)+.*mg.*", MEDICATION_NAME, ignore.case = TRUE))
+
+dipyridamole.cohort.whole <- subset(medications,grepl("(Persantine|dipyridamole)", MEDICATION_NAME, ignore.case = TRUE))
+
+dipyridamole.distribution <- c(round(dim(dipyridamole.cohort.whole)[1]/dim(medications)[1]*100, 2), round(length(unique(dipyridamole.cohort.whole$SURROGATE_ID)), 0), round(dim(dipyridamole.cohort)[1]/dim(medications)[1]*100, 2), round(length(unique(dipyridamole.cohort$SURROGATE_ID)), 0))
+
+
+
+@
+
+Here is the medications records distribution by medication.
+
+
+<<xtable1, results=tex, echo=FALSE>>=
+require(xtable)
+#medication.distribution <- data.frame("Warfarin(%)"= warfarin.distribution,"Heparin(%)"= heparin.distribution, "Clopidogrel(%)"= clopidogrel.distribution, "Dabigatran(%)"= dabigatran.distribution, "Eptifibatide(%)"= eptifibatide.distribution, "Abciximab(%)"= abciximab.distribution, "Ticlopidine(%)"= ticlopidine.distribution, "Tirofiban(%)"= tirofiban.distribution, check.names=FALSE)
+
+medication.distribution <- data.frame("Warfarin"= warfarin.distribution,"Heparin"= heparin.distribution, "Clopidogrel"= clopidogrel.distribution, "Dabigatran"= dabigatran.distribution, "Dipyridamole"= dipyridamole.distribution, "Eptifibatide"= eptifibatide.distribution, "Ticlopidine"= ticlopidine.distribution, "Abciximab"= abciximab.distribution, "Tirofiban"= tirofiban.distribution, "Total" = c(sum(warfarin.distribution[1], heparin.distribution[1], clopidogrel.distribution[1], dabigatran.distribution[1], dipyridamole.distribution[1], eptifibatide.distribution[1], ticlopidine.distribution[1], abciximab.distribution[1], tirofiban.distribution[1]), sum(warfarin.distribution[2], heparin.distribution[2], clopidogrel.distribution[2], dabigatran.distribution[2], dipyridamole.distribution[2], eptifibatide.distribution[2], ticlopidine.distribution[2], abciximab.distribution[2], tirofiban.distribution[2]), sum(warfarin.distribution[3], heparin.distribution[3], clopidogrel.distribution[3], dabigatran.distribution[3], dipyridamole.distribution[3], eptifibatide.distribution[3], ticlopidine.distribution[3], abciximab.distribution[3], tirofiban.distribution[3]), sum(warfarin.distribution[4], heparin.distribution[4], clopidogrel.distribution[4], dabigatran.distribution[4], dipyridamole.distribution[4], eptifibatide.distribution[4], ticlopidine.distribution[4], abciximab.distribution[4], tirofiban.distribution[4])), check.names=FALSE)
+
+rownames(medication.distribution) <- c("Records with med. name(%)", "Subjects with med. name(#)", "Records with med. name & dose(%)", "Subjects with dose(#)")
+
+#Transposing the dataframe
+medication.distribution.T <- t(medication.distribution)
+# Set the column headings
+colnames(medication.distribution.T) <- rownames(medication.distribution)
+
+xtab.medication.distribution <- xtable(medication.distribution.T, caption="Medications Records Distriubtion by Medication.", label="Table:1", digits=c(0, 2, 0, 2, 0), align=c( 'l', 'p{2cm}', 'p{2cm}', 'p{2cm}', 'p{2cm}' ))
+#align=rep("p{2cm}c", 5)
+
+print(xtab.medication.distribution, hline.after = c(-1, 0, 9, 10), include.rownames = TRUE)
+
+@
+
+
+
+99.02\% of the medications records includes one of the three medications of Warfarin (37.85\%), heparin (36.24\%) and clopidogrel (24.93\%). Warfarin records which have dosage information have the highest percentage of whole the records (11\%). Although the number of heparin records is bigger than the number of clopidogrel records, the percentage of clopidogrel records with dosage information out of whole the records is higher than that of heparin.
+The above table indicates that a big number of subjects have received more than one medication. The following table shows the number of subjects who have been under treatment with 1 to 6 medications.
+
+
+<<xtable1, results=tex, echo=FALSE>>=
+
+sid.cohort.whole.pool <- c(heparin.cohort.whole$SURROGATE_ID, warfarin.cohort.whole$SURROGATE_ID, clopidogrel.cohort.whole$SURROGATE_ID, dabigatran.cohort.whole$SURROGATE_ID, eptifibatide.cohort.whole$SURROGATE_ID, abciximab.cohort.whole$SURROGATE_ID, ticlopidine.cohort.whole$SURROGATE_ID, tirofiban.cohort.whole$SURROGATE_ID, dipyridamole.cohort.whole$SURROGATE_ID)
+
+#This code is to create a pool of unique SURROGATE_IDs which received any of the medications and their medications' records have dosage information. Then use function "table" to calculate the number of medications that each SURROGATE_ID (e.g., patient/subject) had received.
+sid.unique.cohort.pool <- c(unique(heparin.cohort$SURROGATE_ID), unique(warfarin.cohort$SURROGATE_ID), unique(clopidogrel.cohort$SURROGATE_ID), unique(dabigatran.cohort$SURROGATE_ID), unique(eptifibatide.cohort$SURROGATE_ID), unique(abciximab.cohort$SURROGATE_ID), unique(ticlopidine.cohort$SURROGATE_ID), unique(tirofiban.cohort$SURROGATE_ID), unique(dipyridamole.cohort$SURROGATE_ID))
+
+sid.unique.cohort.frequency.table <- as.data.frame(table(sid.unique.cohort.pool))
+
+#max(sid.unique.cohort.frequency.table$Freq)
+#min(sid.unique.cohort.frequency.table$Freq)
+
+number.of.medication.frequency <- data.frame("Number of Medications" = "Number of Subjects" ,"1"= dim(sid.unique.cohort.frequency.table[which(sid.unique.cohort.frequency.table$Freq==1),])[1] ,"2"= dim(sid.unique.cohort.frequency.table[which(sid.unique.cohort.frequency.table$Freq==2),])[1], "3"= dim(sid.unique.cohort.frequency.table[which(sid.unique.cohort.frequency.table$Freq==3),])[1], "4"= dim(sid.unique.cohort.frequency.table[which(sid.unique.cohort.frequency.table$Freq==4),])[1], "5"= dim(sid.unique.cohort.frequency.table[which(sid.unique.cohort.frequency.table$Freq==5),])[1], "6"= dim(sid.unique.cohort.frequency.table[which(sid.unique.cohort.frequency.table$Freq==6),])[1], check.names=FALSE)
+
+#rownames(number.of.medication.frequency) <- c("Number of Subjects")
+
+xtab.number.of.medication.frequency <- xtable(number.of.medication.frequency, caption="Number of Subjects by Number of Received Medications - Only medication records with dosage information included.", label="Table:1")
+
+print(xtab.number.of.medication.frequency, include.rownames = FALSE)
+
+@
+
+\newpage
+
+\begin{quote}
+\textbf{Quality Assessment Summary:}
+\end{quote}
+\begin{quote}
+\emph{Strength:}
+\end{quote}
+\begin{itemize}
+  \item Duplication: 20\% of the medication records are duplicated records (by attributes SURROGATE\_ID, DAY\_PRESCRIBED, and MEDICATION\_NAME). In some cases, they are useful for accuracy check. 
+  \item Complemetness: All the subjects have medications records.
+\end{itemize}
+\begin{quote}
+\emph{Weakness:}
+\end{quote}
+\begin{itemize}
+  \item Completeness: None of the medication records has any structured information on Dose Quantity and Dose Unit. These pieces of information are embedded in free text under attribute "Medication Name".
+  \item The information on "SOURCE SYSTEM" is incomplete as all of them are reported "legacy".
+  \item 58.53\% of medication records do not have Frequency information (1,375,397 out of 2,349,633 records). 
+  \item Duplication: 20\% of the medication records are duplicated records (by attributes SURROGATE\_ID, DAY\_PRESCRIBED, and MEDICATION\_NAME).
+  \item Accuracy: The records of the same day are inconsistent in a number of cases. This is studied in detail for each medication.
+\end{itemize}
+
+
+\textbf{After cleaning and qulaity control of the height attribute, the number of the remaining subjetcs is 63,550 (40.36\%).}
+
+
+
+%-------------------------------------------
+\section{Warfarin Cohort}
+%--------------------------------------------
+Given that each medication has specific characteritsics, the analysis of each medication is done separately after general anaysis done on all of the records.
+Warfarin cohort has the biggest number of records in the ARD and is also the medication of interest for the first modeling and simulation study. So, the analysis of this cohort's records is done first.  
+
+%-------------------------------------------
+\subsection{Warfarin Cohort's Demographics}
+%--------------------------------------------
+
+The warfarin cohort implies warfarin and coumadin records with at least one piece of dosage information and age, gender, race, height and weight information.
+
+<<sessionInfo, results=tex, echo=FALSE>>=
+#A regular expression is used to extract the records including any form of "warfarin" and "coumadin". 
+#warfarin.cohort <- subset(medications,grepl("(warfarin|Warfarin|coumadin|Coumadin).*(\\d)+.*mg.*", MEDICATION_NAME, ignore.case = TRUE))
+#dim(warfarin.cohort)
+#cat(paste("The warfarin cohort records meaning warfarin and coumadin records with at least dosage information (", round(dim(warfarin.cohort)[1]/dim(medications)[1]*100, 2) , "% of whole the medication records) represent", length(unique(warfarin.cohort$SURROGATE_ID)), "unique subjects."))
+
+#warfarin.cohort.with.more.than.one.digit <- subset(warfarin.cohort,grepl("(((\\d+.*\\d*)|(.\\d+))(\\w+|\\s+)){2,}", MEDICATION_NAME, ignore.case = TRUE))
+cat(paste("The warfarin cohort includes", length(warfarin.cohort.with.more.than.one.digit$SURROGATE_ID), "records which have more than one embedded digit \n(e.g., warfarin 2.5 mg 5 days a week and 2 mg two days a week). \nTo take advanatage of these records, they should be manually cleaned and transformed."))
+
+#warfarin.cohort.unique.id <- unique(warfarin.cohort$SURROGATE_ID)
+warfarin.cohort.unique.id <- intersect(unique(warfarin.cohort$SURROGATE_ID), useable.id)
+@
+   
+
+%-------------------------------------------
+\subsubsection{Age}
+%--------------------------------------------
+
+Here is the age distribution of the warfarin cohort after excluding records with missing age and age of 0.
+
+
+<<xtable1, results=tex, echo=FALSE>>=
+library(xtable)
+
+age.gender.warfarin.cohort <- age.gender.cleaned[which(age.gender.cleaned$SURROGATE_ID %in% warfarin.cohort.unique.id),]
+
+age.labels <- c("<18", "18-24", "25-34", "35-44", "45-54", "55-59", "60-64", "65-74", "75-84", ">85")
+age.percentage.warfarin <- table(cut(age.gender.warfarin.cohort$AGE, breaks=c(-1, 17.9 , 24.9, 34.9, 44.9, 54.9, 59.9, 64.9, 74.9, 84.9, 120), right=FALSE))
+age.distribution.warfarin <- data.frame("Age Range" = age.labels, Percentage = round(((as.data.frame(age.percentage.warfarin))$Freq)/dim(age.gender.warfarin.cohort)[1]*100,2))
+xtab.age.warfarin <- xtable(age.distribution.warfarin, caption="Age Distriubtion in the Aurora Raw Data - Warfarin Cohort", label="Table:4")
+print(xtab.age.warfarin, include.rownames = FALSE)
+
+@
+
+\begin{figure}
+<<fig1, fig=TRUE, echo=FALSE>>=
+histPercent <- function(x, ...) {
+  H <- hist(x, plot = FALSE, breaks = 10)
+  H$density <- with(H, 100 * density* diff(breaks)[1])
+  #labs <- paste(round(H$density), "%", sep="")
+  plot(H, freq = FALSE, ylim=c(0, 1.08*max(H$density)),xlab = "Age Range (year)", ylab="Percentage", las=1, main=NULL, ...)
+}
+
+histPercent(age.gender.warfarin.cohort$AGE, col="lightblue")
+@
+
+\caption{Warfarin Cohort - Age Distribution}
+
+\end{figure}
+\newpage
+
+
+
+
+%-------------------------------------------
+\subsubsection{Gender}
+%--------------------------------------------
+
+<<echo=FALSE>>=
+#cat(paste("Gender types are:", toString(unique(age.gender.warfarin.cohort$GENDER))))
+num.f.warfarin <- length(which(age.gender.warfarin.cohort$GENDER=="F"))
+num.m.warfarin <- length(which(age.gender.warfarin.cohort$GENDER=="M"))
+num.u.warfarin <- length(which(age.gender.warfarin.cohort$GENDER=="U"))
+num.missing.gender.warfarin <- length(which(age.gender.warfarin.cohort$GENDER==""))
+
+gender.type <- c("Male", "Female", "Missing")
+gender.percentage.warfarin <- c(round(num.m.warfarin/dim(age.gender.warfarin.cohort)[1]*100, 2), round(num.f.warfarin/dim(age.gender.warfarin.cohort)[1]*100, 2), round((num.u.warfarin + num.missing.gender.warfarin)/dim(age.gender.warfarin.cohort)[1]*100,2))
+gender.distribution.warfarin <- data.frame(Gender = gender.type, Percentage = gender.percentage.warfarin)
+#gender.distribution
+@
+
+Here is the gender distribution of the warfarin cohort (Table 4) and also that of Milwaukee County and the State of Wisconsin (Table 5) for comparison. 
+
+<<xtable1, results=tex, echo=FALSE>>=
+require(xtable)
+xtab.gender.warfarin <- xtable(gender.distribution.warfarin, caption="Gender Distriubtion in the Aurora Raw Data - Warfarin Cohort", label="Table:1")
+print(xtab.gender.warfarin, include.rownames = FALSE)
+
+gender.mke <- c(48.3, 51.7)
+gender.wi <- c(49.6, 50.4)
+gender.mke.wi <- data.frame("MKE(%)"= gender.mke,"WI(%)"= gender.wi, check.names=FALSE)
+rownames(gender.mke.wi) <- c("Male", "Female")
+
+xtab.gender.mke.wi <- xtable(gender.mke.wi, caption="Gender Distriubtion in Milwaukee County (MKE) and Wisconsin (WI).", label="Table:1")
+print(xtab.gender.mke.wi, include.rownames = TRUE)
+
+@
+%-------------------------------------------
+\subsubsection{Race}
+%--------------------------------------------
+The following table shows the race distribution of the warfarin cohort.
+
+<<xtable3, results=tex, echo=FALSE>>=
+
+warfarin.cohort.races <- races.c[which(races.c$SURROGATE_ID %in% warfarin.cohort.unique.id),]
+#cat(paste(round(dim(warfarin.cohort.races)[1]/length(warfarin.cohort.unique.id)*100, 2), "percent of warfarin cohort have race information.The following table depicts the race distribution in the warfarin cohort."))
+
+warfarin.cohort.num.w <- length(which(warfarin.cohort.races$RACE=="White"))
+warfarin.cohort.num.aa <- length(which(warfarin.cohort.races$RACE=="Black or African American"))
+warfarin.cohort.num.as <- length(which(warfarin.cohort.races$RACE=="Asian"))
+warfarin.cohort.num.ai <- length(which(warfarin.cohort.races$RACE=="American Indian or Alaskan Native"))
+warfarin.cohort.num.nh <- length(which(warfarin.cohort.races$RACE=="Native Hawaiian/Other Pacific Islander"))
+
+
+warfarin.cohort.races.percentage <- c(round(warfarin.cohort.num.w/dim(warfarin.cohort.races)[1]*100, 2), round(warfarin.cohort.num.aa/dim(warfarin.cohort.races)[1]*100, 2), round(warfarin.cohort.num.as/dim(warfarin.cohort.races)[1]*100, 2), round(warfarin.cohort.num.ai/dim(warfarin.cohort.races)[1]*100, 2), round((warfarin.cohort.num.nh)/dim(warfarin.cohort.races)[1]*100,2))
+warfarin.cohort.races.distribution <- data.frame(Race = races.type[-3], Percentage = warfarin.cohort.races.percentage)
+
+xtab.warfarin.cohort.races <- xtable(warfarin.cohort.races.distribution, caption="Warfarin Cohort's Race Distriubtion", label="Table:3")
+print(xtab.warfarin.cohort.races, include.rownames = FALSE)
+
+@
+\newpage
+
+%-------------------------------------------
+\subsubsection{Height}
+%--------------------------------------------
+In the ARD, each subject has multiple height records. Height has the following attributes:
+SURROGATE\_ID, EFFECTIVE\_DAY, HEIGHT, SOURCE\_SYSTEM
+
+For the height records, a few steps are taken:
+First, to identify and exclude height records whose HEIGHT attributes are missing.
+Second, to identify and exclude duplicates height records.
+Third, since in the final modeling and simulation study each subject should have one height record and given that each subject should have been almost stable in height during the treatment period at AHC, we take the median of each subject's height records and take it as the height of the subject. Third, the height medians are refined by excluding the ones that here are considered outliers (i.e., median heights over or lower 3 standard deviations). 
+Fourth, to identify and extract the height of warfarin cohort.
+ 
+
+<<sessionInfo, results=tex, echo=FALSE>>=
+
+warfarin.cohort.heights <- heights.refined[which(heights.refined$V1 %in% warfarin.cohort.unique.id),]
+
+height.mean <- mean(warfarin.cohort.heights$V2)
+height.sd <- sd(warfarin.cohort.heights$V2)
+
+warfarin.cohort.heights.without.outliers <- warfarin.cohort.heights[which(warfarin.cohort.heights$V2 < height.mean + 3*height.sd & warfarin.cohort.heights$V2 > height.mean - 3*height.sd),]
+
+cat(paste("The average height of the warfarin cohort after excluding the outliers is", round(mean(warfarin.cohort.heights.without.outliers$V2), 2) ,"inch."))
+
+#max(warfarin.cohort.heights.without.outliers)
+#min(warfarin.cohort.heights.without.outliers)
+
+@
+
+
+
+
+%-------------------------------------------
+\subsubsection{Weight}
+%--------------------------------------------
+
+@
+
+%-------------------------------------------
+\subsubsection{Residence}
+%--------------------------------------------
+
+@
+
+%-------------------------------------------
+\subsubsection{Tobacco Use}
+%--------------------------------------------
+
+@
+
+%-------------------------------------------
+\subsection{Warfarin Cohort's Clinical Characteristics}
+%--------------------------------------------
+@
+
+
+%-------------------------------------------
+\subsubsection{INR}
+%--------------------------------------------
+
+@
+
+%-------------------------------------------
+\subsubsection{Medical Indications}
+%--------------------------------------------
+
+@
+
+%-------------------------------------------
+\subsubsection{Adverse Events}
+%--------------------------------------------
+
+@
+
+%-------------------------------------------
+\section{Heparin Cohort}
+%--------------------------------------------
+
+%-------------------------------------------
+\section{Clopidogrel Cohort}
+%--------------------------------------------
+
+
+%-------------------------------------------
+\section{Dabigatran Cohort}
+%--------------------------------------------
+
+%-------------------------------------------
+\section{WiAD-Miner}
+%--------------------------------------------
+
+
+%------------------------------------
+\section{Reference}
+%-------------------------------------
+
+
+\end{document}
+
+
+
+
+
